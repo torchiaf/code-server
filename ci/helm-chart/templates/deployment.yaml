@@ -119,20 +119,16 @@ spec:
               protocol: {{ .protocol }}
           {{- end }}
           livenessProbe:
-            httpGet:
+            tcpSocket:
               port: 3000
-              path: /
-              scheme: HTTP
             initialDelaySeconds: 10
             failureThreshold: 5
             successThreshold: 1
             timeoutSeconds: 5
             periodSeconds: 10
           readinessProbe:
-            httpGet:
+            tcpSocket:
               port: 3000
-              path: /
-              scheme: HTTP
             initialDelaySeconds: 10
             failureThreshold: 5
             successThreshold: 2

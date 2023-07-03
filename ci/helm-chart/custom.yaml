@@ -40,18 +40,18 @@ service:
   port: 3000
 
 ingress:
-  enabled: false
+  enabled: true
   annotations:
     kubernetes.io/tls-acme: "true"
   hosts:
-    - host: code-server.example.loc
+    - host: epinio.164.92.128.43.nip.io
       paths:
         - /
   ingressClassName: ""
   tls:
     - secretName: code-server
       hosts:
-        - code-server.example.loc
+        - epinio.164.92.128.43.nip.io
 
 # Optional additional arguments
 extraArgs:
