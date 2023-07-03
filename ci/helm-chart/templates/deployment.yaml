@@ -61,6 +61,7 @@ spec:
           {{- if .Values.securityContext.enabled }}
           securityContext:
             runAsUser: {{ .Values.securityContext.runAsUser }}
+            runAsGroup: 1000
           {{- end }}
           {{- if .Values.lifecycle.enabled }}
           lifecycle:
@@ -74,25 +75,22 @@ spec:
             {{- end }}
           {{- end }}
           env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: "Etc/UTC"
         {{- if .Values.extraVars }}
 {{ toYaml .Values.extraVars | indent 10 }}
         {{- end }}
-          - name: PASSWORD
-            valueFrom:
-              secretKeyRef:
-              {{- if .Values.existingSecret }}
-                name: {{ .Values.existingSecret }}
-              {{- else }}
-                name: {{ template "code-server.fullname" . }}
-              {{- end }}
-                key: password
         {{- if .Values.extraArgs }}
           args:
 {{ toYaml .Values.extraArgs | indent 10 }}
         {{- end }}
           volumeMounts:
           - name: data
-            mountPath: /home/coder
+            mountPath: /config
           {{- range .Values.extraConfigmapMounts }}
           - name: {{ .name }}
             mountPath: {{ .mountPath }}
@@ -113,7 +111,7 @@ spec:
           {{- end }}
           ports:
             - name: http
-              containerPort: 8080
+              containerPort: 3000
               protocol: TCP
           {{- range .Values.extraPorts }}
             - name: {{ .name }}
@@ -122,12 +120,24 @@ spec:
           {{- end }}
           livenessProbe:
             httpGet:
+              port: 3000
               path: /
-              port: http
+              scheme: HTTP
+            initialDelaySeconds: 10
+            failureThreshold: 5
+            successThreshold: 1
+            timeoutSeconds: 5
+            periodSeconds: 10
           readinessProbe:
             httpGet:
+              port: 3000
               path: /
-              port: http
+              scheme: HTTP
+            initialDelaySeconds: 10
+            failureThreshold: 5
+            successThreshold: 2
+            timeoutSeconds: 5
+            periodSeconds: 10
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
