@@ -32,21 +32,18 @@ spec:
       securityContext:
         fsGroup: {{ .Values.securityContext.fsGroup }}
       {{- end }}
-      {{- if and .Values.volumePermissions.enabled .Values.persistence.enabled }}
+      {{- if and .Values.fetchGitSource.enabled }}
       initContainers:
-      - name: init-chmod-data
-        image: busybox:latest
+      - name: init-git-source
+        image: alpine/git
         imagePullPolicy: IfNotPresent
         command:
-          - sh
+          - /bin/sh
           - -c
-          - |
-            chown -R {{ .Values.securityContext.runAsUser }}:{{ .Values.securityContext.fsGroup }} /home/coder
-        securityContext:
-          runAsUser: {{ .Values.volumePermissions.securityContext.runAsUser }}
+          - "cd /github && git clone https://github.com/richard-cox/epinio-sample-app.git"
         volumeMounts:
         - name: data
-          mountPath: /home/coder
+          mountPath: /github
 {{- if .Values.extraInitContainers }}
 {{ tpl .Values.extraInitContainers . | indent 6}}
 {{- end }}
@@ -77,22 +74,13 @@ spec:
         {{- if .Values.extraVars }}
 {{ toYaml .Values.extraVars | indent 10 }}
         {{- end }}
-          - name: PASSWORD
-            valueFrom:
-              secretKeyRef:
-              {{- if .Values.existingSecret }}
-                name: {{ .Values.existingSecret }}
-              {{- else }}
-                name: {{ template "code-server.fullname" . }}
-              {{- end }}
-                key: password
         {{- if .Values.extraArgs }}
           args:
 {{ toYaml .Values.extraArgs | indent 10 }}
         {{- end }}
           volumeMounts:
           - name: data
-            mountPath: /home/coder
+            mountPath: /github
           {{- range .Values.extraConfigmapMounts }}
           - name: {{ .name }}
             mountPath: {{ .mountPath }}
@@ -113,7 +101,7 @@ spec:
           {{- end }}
           ports:
             - name: http
-              containerPort: 8080
+              containerPort: 3000
               protocol: TCP
           {{- range .Values.extraPorts }}
             - name: {{ .name }}
@@ -121,13 +109,21 @@ spec:
               protocol: {{ .protocol }}
           {{- end }}
           livenessProbe:
-            httpGet:
-              path: /
-              port: http
+            tcpSocket:
+              port: 3000
+            initialDelaySeconds: 10
+            failureThreshold: 5
+            successThreshold: 1
+            timeoutSeconds: 5
+            periodSeconds: 10
           readinessProbe:
-            httpGet:
-              path: /
-              port: http
+            tcpSocket:
+              port: 3000
+            initialDelaySeconds: 10
+            failureThreshold: 5
+            successThreshold: 2
+            timeoutSeconds: 5
+            periodSeconds: 10
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
